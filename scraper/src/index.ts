@@ -1,3 +1,4 @@
+import fs from 'fs'
 import puppeteer from 'puppeteer'
 import type { Page } from 'puppeteer'
 
@@ -38,29 +39,34 @@ async function runScraping() {
   const vehicleLinks = [...Array.from(new Set(await fetchAllLinks(page, [])))]
   console.log(`Found ${vehicleLinks.length} links`)
 
+  // Loop through each vehicle link, and get the details
   const vehicles: Vehicle[] = []
   let vehicleCounter = 0
   for (const link of vehicleLinks) {
     vehicleCounter++
     console.log(`Scraping vehicle ${vehicleCounter} of ${vehicleLinks.length}`)
-    // For each link, open a new page and get the vehicle details
     await page.goto(link)
     const vehicle = await getVehicleDetails(page)
     vehicles.push(vehicle)
-
-    // Log the vehicle details
-    console.log('---')
-    console.log('Vehicle ID:', vehicle.id)
-    console.log('Make & Model:', vehicle.makeModel)
-    console.log('Variant:', vehicle.variant)
-    console.log('Price:', vehicle.price)
-    console.log('Miles:', vehicle.miles)
-    console.log('Managers Comment:', vehicle.managersComment)
-    console.log('Specs:', vehicle.specs)
-    console.log('Features:', vehicle.features)
-    console.log('Performance:', vehicle.performance)
-    console.log('---')
   }
+
+  // Convert the vehicles into a CSV where property names are used as the headers,
+  // and arrays/JSON objects are converted to strings
+  const csv = vehicles
+    .map((vehicle) => {
+      return Object.entries(vehicle)
+        .map(([key, value]) => {
+          if (Array.isArray(value)) {
+            return value.map((v) => JSON.stringify(v)).join(',')
+          }
+          return value
+        })
+        .join(',')
+    })
+    .join('\n')
+
+  // Write the CSV to disk
+  fs.writeFileSync('../vehicles.csv', csv)
 
   // Finally, close everything down
   await browser.close()
