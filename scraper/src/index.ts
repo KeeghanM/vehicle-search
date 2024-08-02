@@ -12,6 +12,10 @@ type Vehicle = {
   price: number
   miles: number
   managersComment: string
+  summaryItems: {
+    title: string
+    value: string
+  }[]
   specs: {
     title: string
     values: string[]
@@ -127,6 +131,7 @@ async function getVehicleDetails(page: Page): Promise<Vehicle> {
     price: 0,
     miles: 0,
     managersComment: '',
+    summaryItems: [],
     specs: [],
     features: [],
     performance: [],
@@ -224,6 +229,26 @@ async function getVehicleDetails(page: Page): Promise<Vehicle> {
   } catch (e) {
     vehicle.features = []
     vehicle.performance = []
+  }
+
+  // Get the "summary items" which are a bunch of content cards
+  // at the top of the page
+  try {
+    const summaryItems = await page.$$eval(
+      '.summary-card__content',
+      (items) => {
+        return items.map((item) => {
+          const title =
+            item.querySelector('.summary-card__title')?.textContent ?? ''
+          const value =
+            item.querySelector('.summary-card__value')?.textContent ?? ''
+          return { title, value }
+        })
+      }
+    )
+    vehicle.summaryItems = summaryItems
+  } catch (e) {
+    vehicle.summaryItems = []
   }
 
   return vehicle
