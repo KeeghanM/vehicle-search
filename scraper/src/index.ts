@@ -14,16 +14,16 @@ type Vehicle = {
   specs: {
     title: string
     values: string[]
-  }
+  }[]
   features: string[]
-  performance: string
+  performance: string[]
 }
 
 async function runScraping() {
   console.log('Starting scraping')
   // Launch a new browser and open a new page
   const browser = await puppeteer.launch({
-    headless: false,
+    headless: true,
   })
   const page = await browser.newPage()
 
@@ -38,9 +38,29 @@ async function runScraping() {
   const vehicleLinks = [...Array.from(new Set(await fetchAllLinks(page, [])))]
   console.log(`Found ${vehicleLinks.length} links`)
 
-  //   vehicleLinks.forEach(async (link) => {
-  //     await page.goto(link)
-  //   })
+  const vehicles: Vehicle[] = []
+  let vehicleCounter = 0
+  for (const link of vehicleLinks) {
+    vehicleCounter++
+    console.log(`Scraping vehicle ${vehicleCounter} of ${vehicleLinks.length}`)
+    // For each link, open a new page and get the vehicle details
+    await page.goto(link)
+    const vehicle = await getVehicleDetails(page)
+    vehicles.push(vehicle)
+
+    // Log the vehicle details
+    console.log('---')
+    console.log('Vehicle ID:', vehicle.id)
+    console.log('Make & Model:', vehicle.makeModel)
+    console.log('Variant:', vehicle.variant)
+    console.log('Price:', vehicle.price)
+    console.log('Miles:', vehicle.miles)
+    console.log('Managers Comment:', vehicle.managersComment)
+    console.log('Specs:', vehicle.specs)
+    console.log('Features:', vehicle.features)
+    console.log('Performance:', vehicle.performance)
+    console.log('---')
+  }
 
   // Finally, close everything down
   await browser.close()
@@ -91,6 +111,83 @@ async function fetchAllLinks(page: Page, links: string[]): Promise<string[]> {
     return fetchAllLinks(page, links)
   }
   return links
+}
+
+async function getVehicleDetails(page: Page): Promise<Vehicle> {
+  const vehicle: Vehicle = {
+    id: 0,
+    makeModel: '',
+    variant: '',
+    price: 0,
+    miles: 0,
+    managersComment: '',
+    specs: [],
+    features: [],
+    performance: [],
+  }
+
+  // Get the vehicle ID from the URL
+  const url = page.url().replace('https://www.bristolstreet.co.uk/', '')
+  vehicle.id = parseInt(url.split('/')[1]) // /used-cars/12345/audi-a3 -> 12345
+
+  // Get the vehicle make and model
+  const makeModel = await page.$eval('h1', (el) => el.innerText)
+  if (!makeModel) throw new Error('Could not find make and model')
+  vehicle.makeModel = makeModel
+
+  // Get the vehicle variant
+  const variant = await page.$eval(
+    '.vehicle-detail__heading h3',
+    (el) => el.innerText
+  )
+  if (!variant) throw new Error('Could not find variant')
+  vehicle.variant = variant
+
+  // Get the vehicle price
+  const price = await page.$eval('span.price', (el) => el.innerText)
+  if (!price) throw new Error('Could not find price')
+  vehicle.price = parseInt(price.replace('£', '').replace(',', ''))
+
+  // Get the vehicle miles
+  const miles = await page.$eval('span.js-mileage', (el) => el.innerText)
+  if (!miles) throw new Error('Could not find miles')
+  vehicle.miles = parseInt(miles.replace(',', ''))
+
+  // Get the managers comment
+  const comment = await page.$eval('p.comment__quote', (el) => el.innerText)
+  if (!comment) throw new Error('Could not find comment')
+  vehicle.managersComment = comment
+
+  // Get the vehicle specs
+  // This is all the "accordians" on the page
+  const specs = await page.$$eval('.accordion', (accordians) => {
+    return accordians.map((accordian) => {
+      const title = accordian.querySelector('h4')?.innerText ?? ''
+      const values = Array.from(accordian.querySelectorAll('li')).map(
+        (li) => li.innerText
+      )
+      return { title, values }
+    })
+  })
+  vehicle.specs = specs
+
+  // Get Features & performance all in one go
+  // They're two tables, both with the selector tbody.feature-table__table-body
+  // The first table is the features, the second is the performance
+  const [features, performance] = await page.$$eval(
+    'tbody.feature-table__table-body',
+    (tables) => {
+      return tables.map((table) => {
+        return Array.from(table.querySelectorAll('tr')).map((row) => {
+          return row.innerText ?? row.textContent
+        })
+      })
+    }
+  )
+  vehicle.features = features
+  vehicle.performance = performance
+
+  return vehicle
 }
 
 runScraping()
