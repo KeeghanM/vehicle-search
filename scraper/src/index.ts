@@ -133,65 +133,98 @@ async function getVehicleDetails(page: Page): Promise<Vehicle> {
   }
 
   // Get the vehicle ID from the URL
-  const url = page.url().replace('https://www.bristolstreet.co.uk/', '')
-  vehicle.id = parseInt(url.split('/')[1]) // /used-cars/12345/audi-a3 -> 12345
+  try {
+    const url = page.url().replace('https://www.bristolstreet.co.uk/', '')
+    vehicle.id = parseInt(url.split('/')[1]) // /used-cars/12345/audi-a3 -> 12345
+  } catch (e) {
+    vehicle.id = 0
+  }
 
   // Get the vehicle make and model
-  const makeModel = await page.$eval('h1', (el) => el.innerText)
-  if (!makeModel) throw new Error('Could not find make and model')
-  vehicle.makeModel = makeModel
+  try {
+    const makeModel = await page.$eval('h1', (el) => el.innerText)
+    if (!makeModel) throw new Error('Could not find make and model')
+    vehicle.makeModel = makeModel
+  } catch (e) {
+    vehicle.makeModel = ''
+  }
 
   // Get the vehicle variant
-  const variant = await page.$eval(
-    '.vehicle-detail__heading h3',
-    (el) => el.innerText
-  )
-  if (!variant) throw new Error('Could not find variant')
-  vehicle.variant = variant
+  try {
+    const variant = await page.$eval(
+      '.vehicle-detail__heading h3',
+      (el) => el.innerText
+    )
+    if (!variant) throw new Error('Could not find variant')
+    vehicle.variant = variant
+  } catch (e) {
+    vehicle.variant = ''
+  }
 
   // Get the vehicle price
-  const price = await page.$eval('span.price', (el) => el.innerText)
-  if (!price) throw new Error('Could not find price')
-  vehicle.price = parseInt(price.replace('£', '').replace(',', ''))
+  try {
+    const price = await page.$eval('span.price', (el) => el.innerText)
+    if (!price) throw new Error('Could not find price')
+    vehicle.price = parseInt(price.replace('£', '').replace(',', ''))
+  } catch (e) {
+    vehicle.price = 0
+  }
 
   // Get the vehicle miles
-  const miles = await page.$eval('span.js-mileage', (el) => el.innerText)
-  if (!miles) throw new Error('Could not find miles')
-  vehicle.miles = parseInt(miles.replace(',', ''))
+  try {
+    const miles = await page.$eval('span.js-mileage', (el) => el.innerText)
+    if (!miles) throw new Error('Could not find miles')
+    vehicle.miles = parseInt(miles.replace(',', ''))
+  } catch (e) {
+    vehicle.miles = 0
+  }
 
   // Get the managers comment
-  const comment = await page.$eval('p.comment__quote', (el) => el.innerText)
-  if (!comment) throw new Error('Could not find comment')
-  vehicle.managersComment = comment
+  try {
+    const comment = await page.$eval('p.comment__quote', (el) => el.innerText)
+    if (!comment) throw new Error('Could not find comment')
+    vehicle.managersComment = comment
+  } catch (e) {
+    vehicle.managersComment = ''
+  }
 
   // Get the vehicle specs
   // This is all the "accordians" on the page
-  const specs = await page.$$eval('.accordion', (accordians) => {
-    return accordians.map((accordian) => {
-      const title = accordian.querySelector('h4')?.innerText ?? ''
-      const values = Array.from(accordian.querySelectorAll('li')).map(
-        (li) => li.innerText
-      )
-      return { title, values }
+  try {
+    const specs = await page.$$eval('.accordion', (accordians) => {
+      return accordians.map((accordian) => {
+        const title = accordian.querySelector('h4')?.innerText ?? ''
+        const values = Array.from(accordian.querySelectorAll('li')).map(
+          (li) => li.innerText
+        )
+        return { title, values }
+      })
     })
-  })
-  vehicle.specs = specs
+    vehicle.specs = specs
+  } catch (e) {
+    vehicle.specs = []
+  }
 
   // Get Features & performance all in one go
   // They're two tables, both with the selector tbody.feature-table__table-body
   // The first table is the features, the second is the performance
-  const [features, performance] = await page.$$eval(
-    'tbody.feature-table__table-body',
-    (tables) => {
-      return tables.map((table) => {
-        return Array.from(table.querySelectorAll('tr')).map((row) => {
-          return row.innerText ?? row.textContent
+  try {
+    const [features, performance] = await page.$$eval(
+      'tbody.feature-table__table-body',
+      (tables) => {
+        return tables.map((table) => {
+          return Array.from(table.querySelectorAll('tr')).map((row) => {
+            return row.innerText ?? row.textContent
+          })
         })
-      })
-    }
-  )
-  vehicle.features = features
-  vehicle.performance = performance
+      }
+    )
+    vehicle.features = features
+    vehicle.performance = performance
+  } catch (e) {
+    vehicle.features = []
+    vehicle.performance = []
+  }
 
   return vehicle
 }
