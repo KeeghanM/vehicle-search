@@ -7,6 +7,15 @@ const schema = a.schema({
     .arguments({
       searchString: a.string().required(),
     })
+    .returns([
+      {
+        id: a.string().required(),
+        makeModel: a.string().required(),
+        variant: a.string().required(),
+        price: a.integer().required(),
+        miles: a.integer().required(),
+      },
+    ])
     .handler(a.handler.function(search)),
 })
 
