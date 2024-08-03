@@ -14,6 +14,7 @@
     "typescript": "^5.5.4"
   },
   "dependencies": {
+    "csv-stringify": "^6.5.1",
     "puppeteer": "^22.15.0"
   }
 }

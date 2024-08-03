@@ -1,9 +1,11 @@
 import fs from 'fs'
+import { stringify } from 'csv-stringify'
 import puppeteer from 'puppeteer'
 import type { Page } from 'puppeteer'
 
 let pageCounter = 0
-let maxPages = 2 // low for testing, set to infinity for production
+const maxPages = 8 //4 // low for testing, set to infinity for production
+const maxVehicles = 1000 // low for testing, set to infinity for production
 
 type Vehicle = {
   id: number
@@ -29,6 +31,7 @@ async function runScraping() {
   // Launch a new browser and open a new page
   const browser = await puppeteer.launch({
     headless: true,
+    args: ['--disable-features=site-per-process'], // this prevents the browser from crashing, not sure why
   })
   const page = await browser.newPage()
 
@@ -48,29 +51,22 @@ async function runScraping() {
   let vehicleCounter = 0
   for (const link of vehicleLinks) {
     vehicleCounter++
+    if (vehicleCounter > maxVehicles) break
     console.log(`Scraping vehicle ${vehicleCounter} of ${vehicleLinks.length}`)
     await page.goto(link)
     const vehicle = await getVehicleDetails(page)
     vehicles.push(vehicle)
+    // TODO: Write the vehicles to the file as we go, rather than all at once at the end
+    // should help with memory usage when run on 10k+ vehicles
   }
 
   // Convert the vehicles into a CSV where property names are used as the headers,
   // and arrays/JSON objects are converted to strings
-  const csv = vehicles
-    .map((vehicle) => {
-      return Object.entries(vehicle)
-        .map(([key, value]) => {
-          if (Array.isArray(value)) {
-            return value.map((v) => JSON.stringify(v)).join(',')
-          }
-          return value
-        })
-        .join(',')
-    })
-    .join('\n')
-
-  // Write the CSV to disk
-  fs.writeFileSync('../vehicles.csv', csv)
+  stringify(vehicles, { header: true }, (err, output) => {
+    if (err) throw err
+    fs.writeFileSync('vehicles.csv', output)
+    console.log('CSV file written')
+  })
 
   // Finally, close everything down
   await browser.close()
@@ -144,6 +140,8 @@ async function getVehicleDetails(page: Page): Promise<Vehicle> {
   } catch (e) {
     vehicle.id = 0
   }
+
+  console.log(`Vehicle ID: ${vehicle.id}`)
 
   // Get the vehicle make and model
   try {
@@ -225,7 +223,7 @@ async function getVehicleDetails(page: Page): Promise<Vehicle> {
       }
     )
     vehicle.features = features
-    vehicle.performance = performance
+    vehicle.performance = performance //TODO: This is not working for some reason
   } catch (e) {
     vehicle.features = []
     vehicle.performance = []
@@ -239,7 +237,7 @@ async function getVehicleDetails(page: Page): Promise<Vehicle> {
       (items) => {
         return items.map((item) => {
           const title =
-            item.querySelector('.summary-card__title')?.textContent ?? ''
+            item.querySelector('.summary-card__title')?.textContent ?? '' // TODO: Only need the first line, split on /n to remove unwanted text
           const value =
             item.querySelector('.summary-card__value')?.textContent ?? ''
           return { title, value }
