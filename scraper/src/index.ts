@@ -1,10 +1,9 @@
 import fs from 'fs'
-import { stringify } from 'csv-stringify'
 import puppeteer from 'puppeteer'
 import type { Page } from 'puppeteer'
 
 let pageCounter = 0
-const maxPages = 8 //4 // low for testing, set to infinity for production
+const maxPages = 2 // low for testing, set to infinity for production
 const maxVehicles = 1000 // low for testing, set to infinity for production
 
 type Vehicle = {
@@ -23,10 +22,16 @@ type Vehicle = {
     values: string[]
   }[]
   features: string[]
-  performance: string[]
 }
 
 async function runScraping() {
+  // Create a new CSV file to write to with the headers
+  const outputFile = fs.createWriteStream('vehicles.csv')
+  outputFile.write(
+    'id,makeModel,variant,price,miles,managersComment,summaryItems,specs,features,vectoriseContent\n'
+  )
+
+  // Run the scraping function
   console.log('Starting scraping')
   // Launch a new browser and open a new page
   const browser = await puppeteer.launch({
@@ -47,26 +52,14 @@ async function runScraping() {
   console.log(`Found ${vehicleLinks.length} links`)
 
   // Loop through each vehicle link, and get the details
-  const vehicles: Vehicle[] = []
   let vehicleCounter = 0
   for (const link of vehicleLinks) {
     vehicleCounter++
     if (vehicleCounter > maxVehicles) break
     console.log(`Scraping vehicle ${vehicleCounter} of ${vehicleLinks.length}`)
     await page.goto(link)
-    const vehicle = await getVehicleDetails(page)
-    vehicles.push(vehicle)
-    // TODO: Write the vehicles to the file as we go, rather than all at once at the end
-    // should help with memory usage when run on 10k+ vehicles
+    writeToFile(await getVehicleDetails(page), outputFile)
   }
-
-  // Convert the vehicles into a CSV where property names are used as the headers,
-  // and arrays/JSON objects are converted to strings
-  stringify(vehicles, { header: true }, (err, output) => {
-    if (err) throw err
-    fs.writeFileSync('vehicles.csv', output)
-    console.log('CSV file written')
-  })
 
   // Finally, close everything down
   await browser.close()
@@ -130,7 +123,6 @@ async function getVehicleDetails(page: Page): Promise<Vehicle> {
     summaryItems: [],
     specs: [],
     features: [],
-    performance: [],
   }
 
   // Get the vehicle ID from the URL
@@ -186,7 +178,7 @@ async function getVehicleDetails(page: Page): Promise<Vehicle> {
   try {
     const comment = await page.$eval('p.comment__quote', (el) => el.innerText)
     if (!comment) throw new Error('Could not find comment')
-    vehicle.managersComment = comment
+    vehicle.managersComment = comment.replace(/"/g, '') // Remove the wrapping quotes
   } catch (e) {
     vehicle.managersComment = ''
   }
@@ -208,25 +200,19 @@ async function getVehicleDetails(page: Page): Promise<Vehicle> {
     vehicle.specs = []
   }
 
-  // Get Features & performance all in one go
-  // They're two tables, both with the selector tbody.feature-table__table-body
-  // The first table is the features, the second is the performance
+  // Get Features from the table tbody.feature-table__table-body
   try {
-    const [features, performance] = await page.$$eval(
-      'tbody.feature-table__table-body',
-      (tables) => {
-        return tables.map((table) => {
-          return Array.from(table.querySelectorAll('tr')).map((row) => {
-            return row.innerText ?? row.textContent
-          })
+    const features = await page.$$eval(
+      '.feature-table__table-body tr',
+      (rows) => {
+        return rows.map((row) => {
+          return row.querySelector('td')?.textContent ?? ''
         })
       }
     )
     vehicle.features = features
-    vehicle.performance = performance //TODO: This is not working for some reason
   } catch (e) {
     vehicle.features = []
-    vehicle.performance = []
   }
 
   // Get the "summary items" which are a bunch of content cards
@@ -237,7 +223,9 @@ async function getVehicleDetails(page: Page): Promise<Vehicle> {
       (items) => {
         return items.map((item) => {
           const title =
-            item.querySelector('.summary-card__title')?.textContent ?? '' // TODO: Only need the first line, split on /n to remove unwanted text
+            item
+              .querySelector('.summary-card__title')
+              ?.textContent?.split('\n')[0] ?? ''
           const value =
             item.querySelector('.summary-card__value')?.textContent ?? ''
           return { title, value }
@@ -252,4 +240,36 @@ async function getVehicleDetails(page: Page): Promise<Vehicle> {
   return vehicle
 }
 
+function escapeCsvValue(value: string): string {
+  return `"${value.replace(/"/g, '""').replace(/\n/g, ' ')}"`
+}
+
+function writeToFile(vehicle: Vehicle, file: fs.WriteStream) {
+  const summaryItems = vehicle.summaryItems
+    .map((item) => `${item.title}: ${item.value}`)
+    .join(', ')
+  const specs = vehicle.specs
+    .map((spec) => `${spec.title}: ${spec.values.join(', ')}`)
+    .join(', ')
+  const features = vehicle.features.join(', ')
+
+  const vectoriseContent = `${vehicle.makeModel} ${vehicle.variant}. Price: ${vehicle.price}, Miles: ${vehicle.miles}. ${vehicle.managersComment} ${summaryItems} ${specs} ${features}`
+
+  file.write(
+    `${vehicle.id},${escapeCsvValue(vehicle.makeModel)},${escapeCsvValue(
+      vehicle.variant
+    )},${vehicle.price},${vehicle.miles},${escapeCsvValue(
+      vehicle.managersComment
+    )},${escapeCsvValue(summaryItems)},${escapeCsvValue(
+      specs
+    )},${escapeCsvValue(features)},${escapeCsvValue(vectoriseContent)}\n`
+  )
+}
+
 runScraping()
+  .then(() => {
+    console.log('Scraping complete')
+  })
+  .catch((e) => {
+    console.error('Error:', e)
+  })
