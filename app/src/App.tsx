@@ -9,23 +9,31 @@ const client = generateClient<Schema>()
 function App() {
   const [searchString, setSearchString] = useState<string>('')
   const [searchResults, setSearchResults] = useState<Vehicle[]>([])
+  const [searching, setSearching] = useState<boolean>(false)
 
   const handleSearch = async () => {
     if (searchString.length <= 10) return
 
-    const result = await client.queries.search({
-      searchString,
-    })
-    const cleanData = result.data
-      ?.filter((vehicle) => vehicle !== null && vehicle !== undefined)
-      .map((vehicle) => ({
-        id: vehicle?.id,
-        makeModel: vehicle.makeModel,
-        variant: vehicle.variant,
-        price: vehicle.price,
-        miles: vehicle.miles,
-      }))
-    setSearchResults(cleanData ?? [])
+    try {
+      setSearching(true)
+      const result = await client.queries.search({
+        searchString,
+      })
+      const cleanData = result.data
+        ?.filter((vehicle) => vehicle !== null && vehicle !== undefined)
+        .map((vehicle) => ({
+          id: vehicle?.id,
+          makeModel: vehicle.makeModel,
+          variant: vehicle.variant,
+          price: vehicle.price,
+          miles: vehicle.miles,
+        }))
+      setSearchResults(cleanData ?? [])
+    } catch (error) {
+      console.error(error)
+    } finally {
+      setSearching(false)
+    }
   }
 
   return (
@@ -37,6 +45,7 @@ function App() {
         onSubmit={handleSearch}
         onClear={() => setSearchString('')}
       />
+      {searching && <p>Searching...</p>}
       <ul>
         {searchResults.map((vehicle) => (
           <li key={vehicle.id}>
