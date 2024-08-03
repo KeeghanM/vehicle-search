@@ -3,10 +3,12 @@ import type { Schema } from '../amplify/data/resource'
 import { generateClient } from 'aws-amplify/data'
 import type { Vehicle } from '../amplify/functions/search/handler'
 import { SearchField } from '@aws-amplify/ui-react'
-
-const client = generateClient<Schema>()
+import { Amplify } from 'aws-amplify'
+import outputs from '../amplify_outputs.json'
+Amplify.configure(outputs)
 
 function App() {
+  const client = generateClient<Schema>()
   const [searchString, setSearchString] = useState<string>('')
   const [searchResults, setSearchResults] = useState<Vehicle[]>([])
   const [searching, setSearching] = useState<boolean>(false)

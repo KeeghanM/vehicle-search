@@ -15,6 +15,7 @@ const schema = a.schema({
       searchString: a.string().required(),
     })
     .returns(a.ref('vehicleResponse').array().required())
+    .authorization((allow) => allow.guest())
     .handler(a.handler.function(search)),
 })
 
