@@ -10,9 +10,7 @@ export type Vehicle = {
   miles: number
 }
 
-export async function handler(
-  event: Schema['search']['functionHandler']
-): Promise<Vehicle[] | Error> {
+export const handler: Schema['search']['functionHandler'] = async (event) => {
   try {
     if (!env.ASTRA_DB_APPLICATION_TOKEN || !env.ASTRA_DB_API_ENDPOINT) {
       throw new Error('Missing Astra DB credentials')
@@ -44,10 +42,8 @@ export async function handler(
       price: vehicle.price,
       miles: vehicle.miles,
     }))
-  } catch (error: any) {
-    if (error instanceof Error) {
-      return error
-    }
-    return new Error('Unknown error')
+  } catch (error) {
+    console.error(error)
+    throw new Error('Failed to search vehicles')
   }
 }

@@ -16,7 +16,16 @@ function App() {
     const result = await client.queries.search({
       searchString,
     })
-    console.log(result.data)
+    const cleanData = result.data
+      ?.filter((vehicle) => vehicle !== null && vehicle !== undefined)
+      .map((vehicle) => ({
+        id: vehicle?.id,
+        makeModel: vehicle.makeModel,
+        variant: vehicle.variant,
+        price: vehicle.price,
+        miles: vehicle.miles,
+      }))
+    setSearchResults(cleanData ?? [])
   }
 
   return (
@@ -28,6 +37,16 @@ function App() {
         onSubmit={handleSearch}
         onClear={() => setSearchString('')}
       />
+      <ul>
+        {searchResults.map((vehicle) => (
+          <li key={vehicle.id}>
+            <h3>{vehicle.makeModel}</h3>
+            <h4>{vehicle.variant}</h4>
+            <p>Price: {vehicle.price}</p>
+            <p>Miles: {vehicle.miles}</p>
+          </li>
+        ))}
+      </ul>
     </main>
   )
 }
