@@ -8,7 +8,9 @@ import outputs from '../amplify_outputs.json'
 Amplify.configure(outputs)
 
 function App() {
-  const client = generateClient<Schema>()
+  const client = generateClient<Schema>({
+    authMode: 'apiKey',
+  })
   const [searchString, setSearchString] = useState<string>('')
   const [searchResults, setSearchResults] = useState<Vehicle[]>([])
   const [searching, setSearching] = useState<boolean>(false)

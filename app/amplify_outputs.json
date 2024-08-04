@@ -1,3 +1,78 @@
 {
+  "data": {
+    "url": "https://qortfkicfbfcllqsdbkr7z7tfe.appsync-api.eu-north-1.amazonaws.com/graphql",
+    "aws_region": "eu-north-1",
+    "api_key": "da2-ibaymo2y5ndq5krzriypgvwi6e",
+    "default_authorization_type": "API_KEY",
+    "authorization_types": [
+      "AWS_IAM"
+    ],
+    "model_introspection": {
+      "version": 1,
+      "models": {},
+      "enums": {},
+      "nonModels": {
+        "vehicleResponse": {
+          "name": "vehicleResponse",
+          "fields": {
+            "id": {
+              "name": "id",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "makeModel": {
+              "name": "makeModel",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "variant": {
+              "name": "variant",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "price": {
+              "name": "price",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": true,
+              "attributes": []
+            },
+            "miles": {
+              "name": "miles",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": true,
+              "attributes": []
+            }
+          }
+        }
+      },
+      "queries": {
+        "search": {
+          "name": "search",
+          "isArray": true,
+          "type": {
+            "nonModel": "vehicleResponse"
+          },
+          "isRequired": false,
+          "isArrayNullable": false,
+          "arguments": {
+            "searchString": {
+              "name": "searchString",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            }
+          }
+        }
+      }
+    }
+  },
   "version": "1"
 }
