@@ -1,6 +1,5 @@
 import { DataAPIClient } from '@datastax/astra-db-ts'
 import { Schema } from '../../data/resource'
-import { env } from '$amplify/env/search'
 
 export type Vehicle = {
   id: string
@@ -11,15 +10,15 @@ export type Vehicle = {
 }
 
 export const handler: Schema['search']['functionHandler'] = async (event) => {
-  if (!env.ASTRA_DB_APPLICATION_TOKEN) {
+  if (!process.env.ASTRA_DB_APPLICATION_TOKEN) {
     throw new Error('Missing Astra DB Token')
   }
-  if (!env.ASTRA_DB_API_ENDPOINT) {
+  if (!process.env.ASTRA_DB_API_ENDPOINT) {
     throw new Error('Missing Astra DB API Endpoint')
   }
 
-  const client = new DataAPIClient(env.ASTRA_DB_APPLICATION_TOKEN)
-  const db = client.db(env.ASTRA_DB_API_ENDPOINT)
+  const client = new DataAPIClient(process.env.ASTRA_DB_APPLICATION_TOKEN)
+  const db = client.db(process.env.ASTRA_DB_API_ENDPOINT)
 
   const { searchString } = event.arguments
 
