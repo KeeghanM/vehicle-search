@@ -23,6 +23,7 @@ function App() {
       const result = await client.queries.search({
         searchString,
       })
+      console.log(result)
       const cleanData = result.data
         ?.filter((vehicle) => vehicle !== null && vehicle !== undefined)
         .map((vehicle) => ({
