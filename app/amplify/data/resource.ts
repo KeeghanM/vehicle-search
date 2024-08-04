@@ -14,8 +14,8 @@ const schema = a.schema({
     .arguments({
       searchString: a.string().required(),
     })
+    .authorization((allow) => [allow.publicApiKey()])
     .returns(a.ref('vehicleResponse').array().required())
-    .authorization((allow) => allow.guest())
     .handler(a.handler.function(search)),
 })
 
